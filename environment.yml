@@ -1,0 +1,8 @@
+name: open_ai_agent_demo
+channels:
+  - conda-forge
+dependencies:
+  - autopep8
+  - python
+  - pip:
+      - openai-agents

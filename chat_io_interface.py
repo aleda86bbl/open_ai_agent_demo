@@ -7,7 +7,7 @@ from agents import (Runner,
                     TResponseInputItem,
                     InputGuardrailTripwireTriggered
                     )
-from data_models import RestaurantMenu
+from data_models import RestaurantMenu, RestaurantOrder
 from restaurant_agents import triage_agent, restaurant_menu_agent, restaurant_menu_extractor_agent
 
 
@@ -43,6 +43,7 @@ class TextChatClient(object):
             with open(save_menu_path, 'wb') as f:
                 f.write(menu_json)
         print(self.welcome_message)
+        restaurant_order = RestaurantOrder()
         while True:
             try:
                 input_items = [{'content': input('User: '),
@@ -51,7 +52,7 @@ class TextChatClient(object):
                     system_prompt = {'content': f'Get all food item information from the following menu only: {to_json(self.restaurant_menu)}',
                                      'role': 'system'}
                     input_items.append(system_prompt)
-                result = await Runner.run(self.current_agent, input_items)
+                result = await Runner.run(self.current_agent, input_items, context=restaurant_order)
                 print(f'{result.last_agent.name}: {result.final_output}')
                 self.current_agent = result.last_agent
             except KeyboardInterrupt:

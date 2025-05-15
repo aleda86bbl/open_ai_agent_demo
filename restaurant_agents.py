@@ -1,7 +1,8 @@
 from agents import Agent, InputGuardrail, GuardrailFunctionOutput, Runner
 from pydantic import BaseModel
 
-from data_models import RestaurantMenu
+from data_models import RestaurantMenu, RestaurantOrder
+from restaurant_tools import add_food_item, show_ordered_items
 
 MAIN_MODEL = 'gpt-4o-mini'
 
@@ -43,23 +44,25 @@ restaurant_menu_agent = Agent(
 )
 
 
-food_orderer_agent = Agent(
+food_orderer_agent = Agent[RestaurantOrder](
     name='Food Orderer',
     handoff_description='Specialist agent for handling the order of food.',
     instructions='You help the customer choose which items of food to have from the menu.',
-    model=MAIN_MODEL
+    model=MAIN_MODEL,
+    tools=[add_food_item, show_ordered_items]
 )
 
 
-billing_agent = Agent(
+billing_agent = Agent[RestaurantOrder](
     name='Billing',
     handoff_description='Specialist agent for handling payment of the bill.',
     instructions='You help the customer with payment of the food order.',
-    model=MAIN_MODEL
+    model=MAIN_MODEL,
+    tools=[show_ordered_items]
 )
 
 
-triage_agent = Agent(
+triage_agent = Agent[RestaurantOrder](
     name='Triage Agent',
     instructions='You determine which agent to use based on the customer\'s requests.',
     handoffs=[food_orderer_agent, billing_agent, restaurant_menu_agent],

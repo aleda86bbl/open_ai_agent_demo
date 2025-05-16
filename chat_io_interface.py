@@ -7,8 +7,8 @@ from agents import (Runner,
                     TResponseInputItem,
                     InputGuardrailTripwireTriggered
                     )
-from data_models import RestaurantMenu, RestaurantOrder
-from restaurant_agents import triage_agent, restaurant_menu_agent, restaurant_menu_extractor_agent
+from data_models import RestaurantMenu, RestaurantOrder, OrderState
+from restaurant_agents import triage_agent, restaurant_menu_extractor_agent
 
 
 class TextChatClient(object):
@@ -55,6 +55,8 @@ class TextChatClient(object):
                 result = await Runner.run(self.current_agent, input_items, context=restaurant_order)
                 print(f'{result.last_agent.name}: {result.final_output}')
                 self.current_agent = result.last_agent
+                if restaurant_order.order_state == OrderState.DONE_WITH_ORDER:
+                    self.current_agent = triage_agent
             except KeyboardInterrupt:
                 print(self.goodbye_message)
                 exit()

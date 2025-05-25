@@ -8,3 +8,4 @@ dependencies:
   - pip:
       - openai-agents[voice]
       - pyaudio
+      - pynput

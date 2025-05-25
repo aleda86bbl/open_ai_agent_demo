@@ -23,13 +23,32 @@ from restaurant_agents import triage_agent, restaurant_menu_extractor_agent
 from typing import Any, AsyncIterator
 
 
+async def create_restaurant_menu(menu_path: Path, menu_raw_text_file: Path) -> RestaurantMenu:
+    if menu_path.exists():
+        with open(menu_path, 'rb') as f:
+            menu_json = f.read()
+        return RestaurantMenu.model_validate(from_json(menu_json))
+    else:
+        with open(menu_raw_text_file, 'rb') as f:
+            menu_text = f.read()
+        input_items = [{'content': f'Parse the following menu text: {menu_text}',
+                        'role': 'user'}]
+        menu_parse_result = await Runner.run(restaurant_menu_extractor_agent,
+                                             input_items)
+        restaurant_menu = menu_parse_result.final_output
+        menu_json = to_json(restaurant_menu,
+                            indent=4)
+        with open(menu_path, 'wb') as f:
+            f.write(menu_json)
+        return restaurant_menu
+
+
 class WorkflowCallbacks(SingleAgentWorkflowCallbacks):
     def on_run(self, workflow: SingleAgentVoiceWorkflow, transcription: str) -> None:
         print(f'User: {transcription}')
 
 
-class RestaurantAgentVoiceWorkflow(VoiceWorkflowBase):
-
+class RestaurantAgentWorkflow(VoiceWorkflowBase):
     def __init__(self,
                  agent: Agent[Any],
                  restaurant_menu: RestaurantMenu,
@@ -80,43 +99,21 @@ class RestaurantAgentVoiceWorkflow(VoiceWorkflowBase):
 
 
 class ChatClient(object):
-    def __init__(self, voice=False):
+    def __init__(self, restaurant_menu, voice=False):
         self.current_agent = triage_agent
         self.input_items: list[TResponseInputItem] = []
         self.welcome_message = 'Welcome to our restaurant! How may I help you?'
         self.goodbye_message = 'Thanks for your custom. We hope to see you again.'
-        self.restaurant_menu = self._load_menu()
+        self.restaurant_menu = restaurant_menu
         self.voice = voice
 
-    @staticmethod
-    def _load_menu() -> RestaurantMenu:
-        menu_path = Path('data/bardo_menu.json')
-        if menu_path.exists():
-            with open(menu_path, 'rb') as f:
-                menu_json = f.read()
-            return RestaurantMenu.model_validate(from_json(menu_json))
-
     async def run(self):
-        if not self.restaurant_menu:
-            menu_raw_text_file = Path('data/bardo_menu.txt')
-            with open(menu_raw_text_file, 'rb') as f:
-                menu_text = f.read()
-            input_items = [{'content': f'Parse the following menu text: {menu_text}',
-                            'role': 'user'}]
-            menu_parse_result = await Runner.run(restaurant_menu_extractor_agent,
-                                                 input_items)
-            self.restaurant_menu = menu_parse_result.final_output
-            save_menu_path = Path('data/bardo_menu.json')
-            menu_json = to_json(self.restaurant_menu,
-                                indent=4)
-            with open(save_menu_path, 'wb') as f:
-                f.write(menu_json)
         print(self.welcome_message)
         restaurant_order = RestaurantOrder()
-        workflow = RestaurantAgentVoiceWorkflow(self.current_agent,
-                                                callbacks=WorkflowCallbacks(),
-                                                restaurant_menu=self.restaurant_menu,
-                                                restaurant_order=restaurant_order)
+        workflow = RestaurantAgentWorkflow(self.current_agent,
+                                           callbacks=WorkflowCallbacks(),
+                                           restaurant_menu=self.restaurant_menu,
+                                           restaurant_order=restaurant_order)
 
         if self.voice:
             voice_pipeline = VoicePipeline(workflow=workflow)

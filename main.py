@@ -1,10 +1,10 @@
 import asyncio
 
-from chat_io_interface import TextChatClient
+from chat_io_interface import ChatClient
 
 
 async def main():
-    client = TextChatClient()
+    client = ChatClient(voice=True)
     await client.run()
 
 
